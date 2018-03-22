@@ -62,6 +62,20 @@ object StatStreamingApp {
             })
         })
 
+        // click count of each channel by referrer and hour
+        cleanLogs.map(log => {
+            val referrer = log.referrer.replace("//", "/").split("/")(1)
+            (log.time + "_" + referrer + "_" + log.categoryId, 1)
+        }).reduceByKey(_ + _).foreachRDD(rdd => {
+            rdd.foreachPartition(partition => {
+                val list = new ListBuffer[ClickCount]
+                partition.foreach(pair => {
+                    list.append(ClickCount(pair._1, pair._2))
+                })
+                ClickCountDAO.increase(list, STAT_BY_REFERRER_HOUR)
+            })
+        })
+
         streamingContext.start()
         streamingContext.awaitTermination()
     }
